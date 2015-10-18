@@ -1,25 +1,43 @@
 #include <iostream>
 #include <vector>
+#include <deque>
+#include <map>
 #include <fstream>
 using namespace std;
 
+enum opCode {
+	NEW=1, READ, WRITE, END 
+};
+
 typedef struct {
-	int opCode;
+	opCode opC;
 	int parameter;
 } command;
 
-void readInCommands(string filename, vector<command> & cs);
+typedef struct {
+	int frame;
+	bool dirty;
+} pte; //Page Table Entry
+
+typedef map<int, pte> pageTable;
+
+typedef deque<int> frames;
+
+const int PAGE_SIZE_FRAME_SIZE = 1000;
+const int MEMORY_SIZE = 3000;
+const int NUM_FRAMES = MEMORY_SIZE/PAGE_SIZE_FRAME_SIZE;
+
+void readInCommands(string filename, vector<command> & c);
 
 int main(int argc, char *argv[]) 
 {
-	vector<command> cs;
-	readInCommands("Vm.dat", cs);
-	for(int i=0; i<cs.size(); i++) cout<<cs[i].opCode<<" "<<cs[i].parameter<<endl;
+	vector<command> c;
+	readInCommands("Vm.dat", c);
 }
 
 /* Function:	readInCommands
- *    Usage:	vector<command> cs;
-				readInCommands("Vm.dat", cs);
+ *    Usage:	vector<command> c;
+				readInCommands("Vm.dat", c);
  * -------------------------------------------
  * Saves the data in a formatted file (eg. "Vm.dat") into a vector of cpmmands (eg. cd).
  * Each line of the file must contain two numbers separated by a space:
@@ -27,9 +45,9 @@ int main(int argc, char *argv[])
  *		- The second number is the parameter (Process Size or Address).
  *		eg. "1 4605"
  */
-void readInCommands(string filename, vector<command> & cs)
+void readInCommands(string filename, vector<command> & c)
 {
-	cs.clear();
+	c.clear();
 	ifstream f(filename, fstream::in);
 	string line;
 	while(f.good())
@@ -44,22 +62,22 @@ void readInCommands(string filename, vector<command> & cs)
 				exit(EXIT_FAILURE);
 			}
 			/**/
-			command c;
+			command newC;
 			/* save the Op Code if it is in the range 1-4 */
 			int end;
 			for(end=0; end<line.length() && isdigit(line[end]); end++) {}
 			int candidate = stoi(line.substr(0,end));
 			if(candidate>=1 && candidate<=4)
 			{
-				c.opCode = candidate;
+				newC.opC = (opCode)candidate;
 			}
 			else
 			{
-				cerr << "ERROR-- readInCommands: " << filename << " '"<< line << "' - An Op Code of 4 (Job End) does not accept a parameter" << endl;
+				cerr << "ERROR-- readInCommands: " << filename << " '"<< line << "' - The OpCode must be one of the following: 1 (New Job), 2 (Read), 3 (Write), 4 (Job End)" << endl;
 				exit(EXIT_FAILURE);
 			} 
 			/**/
-			if(c.opCode!=4)
+			if(newC.opC!=4)
 			{
 				/* if a number doesnt come next, error */
 				if(!isdigit(line[++end])) //skip over the space
@@ -71,7 +89,7 @@ void readInCommands(string filename, vector<command> & cs)
 				/* save the Parameter */
 				int firstDigit = end;
 				for(; end<line.length() && isdigit(line[end]); end++) {}
-				c.parameter = stoi(line.substr(firstDigit, end-firstDigit+1));
+				newC.parameter = stoi(line.substr(firstDigit, end-firstDigit+1));
 				/**/
 				/* if a something comes next, error */
 				if(end<line.length() && isprint(line[end]))
@@ -90,11 +108,11 @@ void readInCommands(string filename, vector<command> & cs)
 					exit(EXIT_FAILURE);
 				}
 				/**/
-				c.parameter=0;
+				newC.parameter=0;
 			}
 
 
-			cs.push_back(c);
+			c.push_back(newC);
 		}
 	}
 	f.close();
