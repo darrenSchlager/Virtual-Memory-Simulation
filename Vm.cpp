@@ -268,25 +268,27 @@ void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frame
 	{
 		cout << "    Page replacement" << endl;
 		
-		int frameToReplace=0;
-		vector<bool> furthestOut(NUM_FRAMES,true);
-		for(int i=currentCommand+1; i<c.size(); i++)
+		int usedCount=0;
+		vector<bool> recentlyUsed(NUM_FRAMES,false);
+		for(int i=currentCommand+1; i<c.size() && usedCount<recentlyUsed.size()-1 && c[i].opC!=END; i++)
 		{
-			int count=0;
-			for(int j=0; j<furthestOut.size(); j++)
-			{
-				if(furthestOut[j]==true)
-				{
-					count++;
-					frameToReplace = j;
-				}
-			}
-			if(count==1) break;
 			int nextPage = stoi(c[i].parameter)/PAGE_SIZE_FRAME_SIZE;
 			if(p.pt.count(nextPage))
-				furthestOut[p.pt[nextPage].frame] = false; 
+			{
+				recentlyUsed[p.pt[nextPage].frame] = true; 
+				usedCount++;
+			}
 		}
-
+		int frameToReplace=0;
+		for(int i=0; i<recentlyUsed.size(); i++)
+		{
+			if(recentlyUsed[i]==false)
+			{
+				frameToReplace=i;
+				break;
+			}
+		}
+		
 		if(isDirty(p, f[frameToReplace]))
 			cout << "      Page out" << endl;
 		for(pageTable::iterator it = p.pt.begin(); it!=p.pt.end(); ++it)
@@ -297,15 +299,11 @@ void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frame
 				break;
 			}
 		}	
-		int tempFrame = f[frameToReplace];
-		f.erase(f.begin()+frameToReplace);
-		f.push_back(tempFrame);
 		pte e;
-		e.frame=tempFrame;
+		e.frame=frameToReplace;
 		e.dirty=false;
 		p.pt[page] = e;
 		cout << "  Location " << p.pt[page].frame << offset << endl;
-		
 	}
 }
 
