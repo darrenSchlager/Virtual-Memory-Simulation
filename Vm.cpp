@@ -1,6 +1,5 @@
 #include <iostream>
 #include <vector>
-#include <deque>
 #include <map>
 #include <fstream>
 using namespace std;
@@ -19,13 +18,13 @@ typedef struct {
 } command;
 
 typedef struct {
-	int frame;
+	int frameNumber;
 	bool dirty;
-} pte; //Page Table Entry
+} frame;
 
-typedef map<int, pte> pageTable;
+typedef map<int, int> pageTable;
 
-typedef deque<int> frames; //hold the frames currently in use
+typedef vector<frame> frames; //hold the frames currently in use
 
 typedef struct {
 	bool valid;
@@ -42,7 +41,7 @@ void processPageHit(replacementAlgorithm algorithm, frames & f, process & p, int
 void processPageFault(frames & f, process & p, int page, string offset, int & numFaults);
 void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frames & f, process & p, int page, string offset, int & numFaults);
 void allocateFreeFrame(frames & f, process & p, int page, string offset);
-bool isDirty(process & p, int frameNumber);
+bool isDirty(frames & f, int frameNumber);
 void readInCommands(string filename, vector<command> & c);
 
 int main(int argc, char *argv[]) 
@@ -159,7 +158,7 @@ void processCommands(replacementAlgorithm algorithm, const vector<command> &c, i
 							else processPageFault(f, p, page, offset, numFaults);
 						}
 						if(p.pt.count(page))
-							p.pt[page].dirty=true;
+							f[p.pt[page]].dirty=true;
 					}
 				}
 			}
@@ -198,15 +197,17 @@ void processPageHit(replacementAlgorithm algorithm, frames & f, process & p, int
 {
 	cout << "  Page hit" << endl;
 	numHits++;
-	cout << "  Location " << p.pt[page].frame << offset << endl;
+	cout << "  Location " << p.pt[page] << offset << endl;
 	
 	if(algorithm==LRU)
 	{
 		for(int i=0; i<f.size(); i++)
 		{
-			if(f[i] == p.pt[page].frame)
+			if(f[i].frameNumber == p.pt[page])
 			{
-				int tempFrame = f[i];
+				frame tempFrame;
+				tempFrame.frameNumber = f[i].frameNumber;
+				tempFrame.dirty = false;
 				f.erase(f.begin()+i);
 				f.push_back(tempFrame);
 			}
@@ -230,24 +231,23 @@ void processPageFault(frames & f, process & p, int page, string offset, int & nu
 	else
 	{
 		cout << "    Page replacement" << endl;
-		if(isDirty(p, f.front()))
+		if(isDirty(f, f.front().frameNumber))
 			cout << "      Page out" << endl;
 		for(pageTable::iterator it = p.pt.begin(); it!=p.pt.end(); ++it)
 		{
-			if(it->second.frame==f.front()) 
+			if(it->second==f.front().frameNumber) 
 			{
 				p.pt.erase(it->first);
 				break;
 			}
 		}
-		int tempFrame = f.front();
+		frame tempFrame;
+		tempFrame.frameNumber = f.front().frameNumber;
+		tempFrame.dirty = false;
 		f.erase(f.begin());
 		f.push_back(tempFrame);
-		pte e;
-		e.frame=tempFrame;
-		e.dirty=false;
-		p.pt[page] = e;
-		cout << "  Location " << p.pt[page].frame << offset << endl;
+		p.pt[page] = tempFrame.frameNumber;
+		cout << "  Location " << p.pt[page] << offset << endl;
 	}
 }
 
@@ -275,7 +275,7 @@ void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frame
 			int nextPage = stoi(c[i].parameter)/PAGE_SIZE_FRAME_SIZE;
 			if(p.pt.count(nextPage))
 			{
-				recentlyUsed[p.pt[nextPage].frame] = true; 
+				recentlyUsed[p.pt[nextPage]] = true; 
 				usedCount++;
 			}
 		}
@@ -289,21 +289,18 @@ void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frame
 			}
 		}
 		
-		if(isDirty(p, f[frameToReplace]))
+		if(isDirty(f, f[frameToReplace].frameNumber))
 			cout << "      Page out" << endl;
 		for(pageTable::iterator it = p.pt.begin(); it!=p.pt.end(); ++it)
 		{
-			if(it->second.frame==f[frameToReplace]) 
+			if(it->second==f[frameToReplace].frameNumber) 
 			{
 				p.pt.erase(it->first);
 				break;
 			}
 		}	
-		pte e;
-		e.frame=frameToReplace;
-		e.dirty=false;
-		p.pt[page] = e;
-		cout << "  Location " << p.pt[page].frame << offset << endl;
+		p.pt[page] = f[frameToReplace].frameNumber;
+		cout << "  Location " << p.pt[page] << offset << endl;
 	}
 }
 
@@ -315,32 +312,31 @@ void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frame
 void allocateFreeFrame(frames & f, process & p, int page, string offset)
 {
 	cout <<"      Using free frame" << endl;
-	int frame = f.size();
-	f.push_back(frame);
-	pte e;
-	e.frame=frame;
-	e.dirty=false;
-	p.pt[page] = e;
-	cout << "  Location " << frame << offset << endl;
+	int frameNum = f.size();
+	frame tempFrame;
+	tempFrame.frameNumber = frameNum;
+	tempFrame.dirty = false;
+	f.push_back(tempFrame);
+	p.pt[page] = frameNum;
+	cout << "  Location " << frameNum << offset << endl;
 }
 
 /* Function:	isDirty
- *    Usage:	isDirty(p, frameNumber);
+ *    Usage:	isDirty(f, frameNumber);
  * -------------------------------------------
  * Checks if the frame is dirty and needs to be paged out. Dirty bits are cleared.
  */
-bool isDirty(process & p, int frameNumber)
+bool isDirty(frames & f, int frameNumber)
 {
-	bool isDirty = false;
-	for(pageTable::iterator it = p.pt.begin(); it!=p.pt.end(); ++it)
+	for(int i=0; i<f.size(); i++)
 	{
-		if(it->second.frame==frameNumber && it->second.dirty)
+		if(f[i].frameNumber==frameNumber && f[i].dirty)
 		{
-			isDirty = true;
-			it->second.dirty = false;
+			f[i].dirty = false;
+			return true;
 		}
 	}
-	return isDirty;
+	return false;
 }
 
 /* Function:	readInCommands
