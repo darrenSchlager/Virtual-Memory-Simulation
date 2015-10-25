@@ -24,7 +24,7 @@ typedef struct {
 
 typedef map<int, int> pageTable;
 
-typedef vector<frame> frames; //hold the frames currently in use
+typedef vector<frame> frameTable;
 
 typedef struct {
 	bool valid;
@@ -37,11 +37,11 @@ const int MEMORY_SIZE = 3000;
 const int NUM_FRAMES = MEMORY_SIZE/PAGE_SIZE_FRAME_SIZE;
 
 void processCommands(replacementAlgorithm algorithm, const vector<command> &c, int & totalProcesses, int &totalHits, int &totalFaults);
-void processPageHit(replacementAlgorithm algorithm, frames & f, process & p, int page, string offset, int & numHits);
-void processPageFault(frames & f, process & p, int page, string offset, int & numFaults);
-void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frames & f, process & p, int page, string offset, int & numFaults);
-void allocateFreeFrame(frames & f, process & p, int page, string offset);
-bool isDirty(frames & f, int frameNumber);
+void processPageHit(replacementAlgorithm algorithm, frameTable & f, process & p, int page, string offset, int & numHits);
+void processPageFault(frameTable & f, process & p, int page, string offset, int & numFaults);
+void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frameTable & f, process & p, int page, string offset, int & numFaults);
+void allocateFreeFrame(frameTable & f, process & p, int page, string offset);
+bool isDirty(frameTable & f, int frameNumber);
 void readInCommands(string filename, vector<command> & c);
 
 int main(int argc, char *argv[]) 
@@ -79,7 +79,7 @@ void processCommands(replacementAlgorithm algorithm, const vector<command> &c, i
 {
 	process p;
 	p.valid=false;
-	frames f;
+	frameTable f;
 	totalProcesses = 0;
 	totalHits = 0;
 	totalFaults = 0;
@@ -193,7 +193,7 @@ void processCommands(replacementAlgorithm algorithm, const vector<command> &c, i
  * -------------------------------------------
  * Process the page hit, prints the details.
  */
-void processPageHit(replacementAlgorithm algorithm, frames & f, process & p, int page, string offset, int & numHits)
+void processPageHit(replacementAlgorithm algorithm, frameTable & f, process & p, int page, string offset, int & numHits)
 {
 	cout << "  Page hit" << endl;
 	numHits++;
@@ -220,7 +220,7 @@ void processPageHit(replacementAlgorithm algorithm, frames & f, process & p, int
  * -------------------------------------------
  * Process the page fault, prints the details
  */
-void processPageFault(frames & f, process & p, int page, string offset, int & numFaults)
+void processPageFault(frameTable & f, process & p, int page, string offset, int & numFaults)
 {
 	cout << "  Page fault " << endl;
 	numFaults++;
@@ -256,7 +256,7 @@ void processPageFault(frames & f, process & p, int page, string offset, int & nu
  * -------------------------------------------
  * Process the page fault, prints the details
  */
-void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frames & f, process & p, int page, string offset, int & numFaults)
+void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frameTable & f, process & p, int page, string offset, int & numFaults)
 {
 	cout << "  Page fault" << endl;
 	numFaults++;
@@ -307,9 +307,9 @@ void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frame
 /* Function:	allocateFreeFrame
  *    Usage:	allocateFreeFrame(f, p, page, offset, numFaults);
  * -------------------------------------------
- * Allocate a free fram, prints the details
+ * Allocate a free frame, prints the details
  */
-void allocateFreeFrame(frames & f, process & p, int page, string offset)
+void allocateFreeFrame(frameTable & f, process & p, int page, string offset)
 {
 	cout <<"      Using free frame" << endl;
 	int frameNum = f.size();
@@ -326,7 +326,7 @@ void allocateFreeFrame(frames & f, process & p, int page, string offset)
  * -------------------------------------------
  * Checks if the frame is dirty and needs to be paged out. Dirty bits are cleared.
  */
-bool isDirty(frames & f, int frameNumber)
+bool isDirty(frameTable & f, int frameNumber)
 {
 	for(int i=0; i<f.size(); i++)
 	{
