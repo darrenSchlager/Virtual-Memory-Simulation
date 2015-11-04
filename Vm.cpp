@@ -96,6 +96,7 @@ void processCommands(replacementAlgorithm algorithm, const vector<command> &c, i
 		
 		int code = c[i].opC;
 		int param = stoi(c[i].parameter);
+		int paramLength = c[i].parameter.length();
 		string paramStr = c[i].parameter;
 		if(code==NEW)
 		{
@@ -122,9 +123,10 @@ void processCommands(replacementAlgorithm algorithm, const vector<command> &c, i
 			else
 			{
 				int page = param/PAGE_SIZE_FRAME_SIZE;
-				string offset;
+				int pageLength = to_string(page).length();
 				int offsetLength = to_string(param%PAGE_SIZE_FRAME_SIZE).length();
-				for(int j=to_string(PAGE_SIZE_FRAME_SIZE-1).length(); j>offsetLength; j--)
+				string offset;
+				for(int j=paramLength-pageLength-offsetLength; j>0; j--)
 					offset += "0";
 				offset += to_string(param%PAGE_SIZE_FRAME_SIZE);
 				
