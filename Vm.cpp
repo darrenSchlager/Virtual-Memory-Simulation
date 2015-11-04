@@ -42,6 +42,7 @@ void processPageFault(frameTable & f, process & p, int page, string offset, int 
 void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frameTable & f, process & p, int page, string offset, int & numFaults);
 void allocateFreeFrame(frameTable & f, process & p, int page, string offset);
 bool isDirty(frameTable & f, int frameNumber);
+void setDirty(frameTable & f, int frameNumber);
 void readInCommands(string filename, vector<command> & c);
 
 int main(int argc, char *argv[]) 
@@ -157,8 +158,8 @@ void processCommands(replacementAlgorithm algorithm, const vector<command> &c, i
 							if(algorithm==OPTIMAL) processPageFaultOPTIMAL(c, i, f, p, page, offset, numFaults);
 							else processPageFault(f, p, page, offset, numFaults);
 						}
-						if(p.pt.count(page))
-							f[p.pt[page]].dirty=true;
+						
+						if(p.pt.count(page)) setDirty(f, p.pt[page]);
 					}
 				}
 			}
@@ -337,6 +338,23 @@ bool isDirty(frameTable & f, int frameNumber)
 		}
 	}
 	return false;
+}
+
+/* Function:	setDirty
+ *    Usage:	setDirty(f, frameNumber);
+ * -------------------------------------------
+ * Sets the frames to be dirty
+ */
+void setDirty(frameTable & f, int frameNumber)
+{
+	for(int i=0; i<f.size(); i++)
+	{
+		if(f[i].frameNumber==frameNumber)
+		{
+			f[i].dirty = true;
+			break;
+		}
+	}
 }
 
 /* Function:	readInCommands
