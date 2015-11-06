@@ -88,6 +88,15 @@ void processCommands(replacementAlgorithm algorithm, const vector<command> &c, i
 	int numFaults = 0;
 	for(int i=0; i<c.size(); i++)
 	{
+		//!!!DEBUG CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		cout << "                                ";
+		for(int i=0; i<f.size(); i++)
+		{
+			if(f[i].dirty) cout << f[i].frameNumber;
+		}
+		cout << endl;
+		//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		
 		if(c[c.size()-1].opC != END)
 		{
 			cerr << "ERROR-- processCommands: The job is never ending. The last OpCode Must be opCode(4)."<< endl;
@@ -210,9 +219,10 @@ void processPageHit(replacementAlgorithm algorithm, frameTable & f, process & p,
 			{
 				frame tempFrame;
 				tempFrame.frameNumber = f[i].frameNumber;
-				tempFrame.dirty = false;
+				tempFrame.dirty = f[i].dirty;
 				f.erase(f.begin()+i);
 				f.push_back(tempFrame);
+				break;
 			}
 		}
 	}
@@ -270,7 +280,6 @@ void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frame
 	else
 	{
 		cout << "    Page replacement" << endl;
-		
 		int usedCount=0;
 		vector<bool> recentlyUsed(NUM_FRAMES,false);
 		for(int i=currentCommand+1; i<c.size() && usedCount<recentlyUsed.size()-1 && c[i].opC!=END; i++)
