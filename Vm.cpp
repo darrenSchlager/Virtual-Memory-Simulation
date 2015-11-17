@@ -47,9 +47,11 @@ void readInCommands(string filename, vector<command> & c);
 
 int main(int argc, char *argv[]) 
 {
-	vector<command> c;
-	readInCommands("Vm.dat", c);
 	int totalProcesses, totalHits, totalFaults;
+	vector<command> c;
+	
+	readInCommands("Vm.dat", c);
+	
 	cout << "*** First In First Out ***" << endl;
 	processCommands(FIFO, c, totalProcesses, totalHits, totalFaults);
 	cout << "####For all " << totalProcesses << " processes, total page hit is " << totalHits << ", total page fault is " << totalFaults << "####" << endl;
@@ -64,7 +66,7 @@ int main(int argc, char *argv[])
 }
 
 /* Function:	processCommands
-				int totalProcessesl
+				int totalProcesses
 				int totalHits;
 				int totalFaults;
  *    Usage:	processCommands(FIFO, c, totalProcesses, totalHits, totalFaults);
@@ -86,32 +88,23 @@ void processCommands(replacementAlgorithm algorithm, const vector<command> &c, i
 	totalFaults = 0;
 	int numHits = 0; 
 	int numFaults = 0;
+	
+	if(c[c.size()-1].opC != END)
+	{
+		cerr << "ERROR-- processCommands: The job is never ending. The last OpCode Must be opCode(4)."<< endl;
+		exit(EXIT_FAILURE);
+	}
+	
 	for(int i=0; i<c.size(); i++)
 	{
-		//!!!DEBUG CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		cout << "                                ";
-		for(int i=0; i<f.size(); i++)
-		{
-			if(f[i].dirty) cout << f[i].frameNumber;
-		}
-		cout << endl;
-		//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		
-		if(c[c.size()-1].opC != END)
-		{
-			cerr << "ERROR-- processCommands: The job is never ending. The last OpCode Must be opCode(4)."<< endl;
-			exit(EXIT_FAILURE);
-		}
-		
 		int code = c[i].opC;
 		int param = stoi(c[i].parameter);
-		int paramLength = c[i].parameter.length();
 		string paramStr = c[i].parameter;
 		if(code==NEW)
 		{
 			if(p.valid)
 			{
-				cerr << "ERROR-- processCommands: Only one job may be active; opCode(4) must precede an additional opCode(1)."<< endl;
+				cerr << "ERROR-- processCommands: Only one job may be active; opCode(4) MUST precede an additional opCode(1)."<< endl;
 				exit(EXIT_FAILURE);
 			}
 			else
@@ -132,10 +125,10 @@ void processCommands(replacementAlgorithm algorithm, const vector<command> &c, i
 			else
 			{
 				int page = param/PAGE_SIZE_FRAME_SIZE;
-				int pageLength = to_string(page).length();
-				int offsetLength = to_string(param%PAGE_SIZE_FRAME_SIZE).length();
 				string offset;
-				for(int j=paramLength-pageLength-offsetLength; j>0; j--)
+				int offsetLength = to_string(param%PAGE_SIZE_FRAME_SIZE).length();
+				int offsetMaxLength = to_string(PAGE_SIZE_FRAME_SIZE-1).length();
+				for(int j=offsetMaxLength-offsetLength; j>0; j--)
 					offset += "0";
 				offset += to_string(param%PAGE_SIZE_FRAME_SIZE);
 				
@@ -207,6 +200,11 @@ void processCommands(replacementAlgorithm algorithm, const vector<command> &c, i
  */
 void processPageHit(replacementAlgorithm algorithm, frameTable & f, process & p, int page, string offset, int & numHits)
 {
+	if(!p.pt.count(page))
+	{
+		cerr << "ERROR-- processPageHit: page '" << page << "' is not in memory." << endl;
+		exit(EXIT_FAILURE);
+	}
 	cout << "  Page hit" << endl;
 	numHits++;
 	cout << "  Location " << p.pt[page] << offset << endl;
@@ -229,12 +227,18 @@ void processPageHit(replacementAlgorithm algorithm, frameTable & f, process & p,
 }
 
 /* Function:	processPageFault
- *    Usage:	processPageFault(f, p, page, offset, numFaults);
+ *    Usage:	if(!p.pt.count(page))
+ *					processPageFault(f, p, page, offset, numFaults);
  * -------------------------------------------
  * Process the page fault, prints the details
  */
 void processPageFault(frameTable & f, process & p, int page, string offset, int & numFaults)
 {
+	if(p.pt.count(page))
+	{
+		cerr << "ERROR-- processPageFault: page '" << page << "' is already in memory." << endl;
+		exit(EXIT_FAILURE);
+	}
 	cout << "  Page fault " << endl;
 	numFaults++;
 	if(f.size()<NUM_FRAMES)
@@ -265,12 +269,18 @@ void processPageFault(frameTable & f, process & p, int page, string offset, int 
 }
 
 /* Function:	processPageFaultOPTIMAL
- *    Usage:	processPageFaultOPTIMAL(f, p, page, offset, numFaults);
+ *    Usage:	if(!p.pt.count(page))
+ *					processPageFaultOPTIMAL(f, p, page, offset, numFaults);
  * -------------------------------------------
  * Process the page fault, prints the details
  */
 void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frameTable & f, process & p, int page, string offset, int & numFaults)
 {
+	if(p.pt.count(page))
+	{
+		cerr << "ERROR-- processPageFault: page '" << page << "' is already in memory." << endl;
+		exit(EXIT_FAILURE);
+	}
 	cout << "  Page fault" << endl;
 	numFaults++;
 	if(f.size()<NUM_FRAMES)
@@ -317,12 +327,18 @@ void processPageFaultOPTIMAL(const vector<command> &c, int currentCommand, frame
 }
 
 /* Function:	allocateFreeFrame
- *    Usage:	allocateFreeFrame(f, p, page, offset, numFaults);
+ *    Usage:	if(f.size()>=NUM_FRAMES)
+ *					allocateFreeFrame(f, p, page, offset, numFaults);
  * -------------------------------------------
  * Allocate a free frame, prints the details
  */
 void allocateFreeFrame(frameTable & f, process & p, int page, string offset)
 {
+	if(f.size()>=NUM_FRAMES)
+	{
+		cerr << "ERROR-- allocateFreeFrame: There are no free frames to allocate." << endl;
+		exit(EXIT_FAILURE);
+	}
 	cout <<"      Using free frame" << endl;
 	int frameNum = f.size();
 	frame tempFrame;
@@ -388,17 +404,18 @@ void readInCommands(string filename, vector<command> & c)
 		getline(f, line);
 		if(line.length()>0 && isprint(line[0]))
 		{
+			int end = 0;
+			while(isblank(line[end])) end++;
 			/* if a number doesnt come next, error */
-			if(!isdigit(line[0])) 
+			if(!isdigit(line[end])) 
 			{
-				cerr << "ERROR-- readInCommands: " << filename << " '"<< line << "' - Each line MUST contain an OpCode. 1 (New Job), 2 (Read), 3 (Write), 4 (Job End)" << endl;
+				cerr << "ERROR-- readInCommands: " << filename << " '"<< line << "' - Each line MUST start with an OpCode. 1 (New Job), 2 (Read), 3 (Write), 4 (Job End)" << endl;
 				exit(EXIT_FAILURE);
 			}
 			/**/
 			command newC;
 			/* save the Op Code if it is in the range 1-4 */
-			int end;
-			for(end=0; end<line.length() && isdigit(line[end]); end++) {}
+			for(; end<line.length() && isdigit(line[end]); end++) {}
 			int candidate = stoi(line.substr(0,end));
 			if(candidate>=1 && candidate<=4)
 			{
@@ -412,10 +429,11 @@ void readInCommands(string filename, vector<command> & c)
 			/**/
 			if(newC.opC!=4)
 			{
+				while(isblank(line[end])) end++;
 				/* if a number doesnt come next, error */
-				if(!isdigit(line[++end])) //skip over the space
+				if(!isdigit(line[end]))
 				{
-					cerr << "ERROR-- readInCommands: " << filename << " '"<< line << "' - An Op Code of 1 (New Job), 2 (Read), or 3 (Write) MUST be followed by a single space and a Parameter  (numbers only)" << endl;
+					cerr << "ERROR-- readInCommands: " << filename << " '"<< line << "' - An Op Code of 1 (New Job), 2 (Read), or 3 (Write) MUST be followed by a space and a Parameter  (numbers only)" << endl;
 					exit(EXIT_FAILURE);
 				}
 				/**/
@@ -424,20 +442,22 @@ void readInCommands(string filename, vector<command> & c)
 				for(; end<line.length() && isdigit(line[end]); end++) {}
 				newC.parameter = line.substr(firstDigit, end-firstDigit+1);
 				/**/
+				while(end<line.length() && isblank(line[end])) end++;
 				/* if a something comes next, error */
 				if(end<line.length() && isprint(line[end]))
 				{
-					cerr << "ERROR-- readInCommands: " << filename << " '"<< line << "' - An Op Code of 1 (New Job), 2 (Read), or 3 (Write) MUST ONLY be followed by a single space and a Parameter (numbers only). No lagging spaces." << endl;
+					cerr << "ERROR-- readInCommands: " << filename << " '"<< line << "' - An Op Code of 1 (New Job), 2 (Read), or 3 (Write) MUST ONLY be followed by a space and a Parameter (numbers only)" << endl;
 					exit(EXIT_FAILURE);
 				}
 				/**/
 			}
 			else
 			{
+				while(end<line.length() && isblank(line[end])) end++;
 				/* if a something comes next, error */
 				if(end<line.length() && isprint(line[end]))
 				{
-					cerr << "ERROR-- readInCommands: " << filename << " '"<< line << "' - An Op Code of 4 (Job End) does not accept a parameter. No lagging spaces." << endl;
+					cerr << "ERROR-- readInCommands: " << filename << " '"<< line << "' - An Op Code of 4 (Job End) does not accept a parameter" << endl;
 					exit(EXIT_FAILURE);
 				}
 				/**/
