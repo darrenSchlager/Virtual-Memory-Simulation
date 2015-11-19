@@ -80,6 +80,15 @@ int main(int argc, char *argv[])
  */
 void processCommands(replacementAlgorithm algorithm, const vector<command> &c, int & totalProcesses, int &totalHits, int &totalFaults)
 {
+	/*//!!!DEBUG CODE (prints the dirty frames)!!!!!!!!!!!!!!!!!!!!!!
+	cout << "                                ";
+	for(int i=0; i<f.size(); i++)
+	{
+		if(f[i].dirty) cout << f[i].frameNumber;
+	}
+	cout << endl;
+	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+	
 	process p;
 	p.valid=false;
 	frameTable f;
@@ -126,11 +135,13 @@ void processCommands(replacementAlgorithm algorithm, const vector<command> &c, i
 			{
 				int page = param/PAGE_SIZE_FRAME_SIZE;
 				string offset;
+				/* format the offset to contain the appropriate number of leading 0's */
 				int offsetLength = to_string(param%PAGE_SIZE_FRAME_SIZE).length();
 				int offsetMaxLength = to_string(PAGE_SIZE_FRAME_SIZE-1).length();
 				for(int j=offsetMaxLength-offsetLength; j>0; j--)
 					offset += "0";
 				offset += to_string(param%PAGE_SIZE_FRAME_SIZE);
+				/**/
 				
 				if(code==READ)
 				{
@@ -404,8 +415,11 @@ void readInCommands(string filename, vector<command> & c)
 		getline(f, line);
 		if(line.length()>0 && isprint(line[0]))
 		{
-			int end = 0;
+			int end = 0; //holds the current position in the line
+			command newC; //holds the input
+			/* skip whitespace */
 			while(isblank(line[end])) end++;
+			/**/
 			/* if a number doesnt come next, error */
 			if(!isdigit(line[end])) 
 			{
@@ -413,7 +427,6 @@ void readInCommands(string filename, vector<command> & c)
 				exit(EXIT_FAILURE);
 			}
 			/**/
-			command newC;
 			/* save the Op Code if it is in the range 1-4 */
 			for(; end<line.length() && isdigit(line[end]); end++) {}
 			int candidate = stoi(line.substr(0,end));
@@ -429,7 +442,9 @@ void readInCommands(string filename, vector<command> & c)
 			/**/
 			if(newC.opC!=4)
 			{
+				/* skip whitespace */
 				while(isblank(line[end])) end++;
+				/**/
 				/* if a number doesnt come next, error */
 				if(!isdigit(line[end]))
 				{
@@ -442,7 +457,9 @@ void readInCommands(string filename, vector<command> & c)
 				for(; end<line.length() && isdigit(line[end]); end++) {}
 				newC.parameter = line.substr(firstDigit, end-firstDigit+1);
 				/**/
-				while(end<line.length() && isblank(line[end])) end++;
+				/* skip whitespace */
+				while(isblank(line[end])) end++;
+				/**/
 				/* if a something comes next, error */
 				if(end<line.length() && isprint(line[end]))
 				{
@@ -453,7 +470,9 @@ void readInCommands(string filename, vector<command> & c)
 			}
 			else
 			{
-				while(end<line.length() && isblank(line[end])) end++;
+				/* skip whitespace */
+				while(isblank(line[end])) end++;
+				/**/
 				/* if a something comes next, error */
 				if(end<line.length() && isprint(line[end]))
 				{
@@ -463,8 +482,6 @@ void readInCommands(string filename, vector<command> & c)
 				/**/
 				newC.parameter="0";
 			}
-
-
 			c.push_back(newC);
 		}
 	}
